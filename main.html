@@ -219,12 +219,14 @@
         };
 
         window.navigateTo = (folderId, folderName = 'Root') => {
+            currentView = 'all'; // Ensure we are in "All Files" view when navigating
+            
             if (folderId === 'root') {
                 currentFolderId = 'root';
                 folderPath = [];
             } else {
                 currentFolderId = folderId;
-                // Simple breadcrumb logic: if id exists in path, slice to it, else push
+                // Breadcrumb logic
                 const idx = folderPath.findIndex(p => p.id === folderId);
                 if (idx !== -1) {
                     folderPath = folderPath.slice(0, idx + 1);
@@ -232,7 +234,22 @@
                     folderPath.push({ id: folderId, name: folderName });
                 }
             }
-            setView('all');
+            
+            // Sync UI state for sidebar if needed
+            const btns = ['all', 'recent', 'trash'];
+            btns.forEach(b => {
+                const el = document.getElementById(`btn-${b}`);
+                if (b === 'all') {
+                    el.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold transition";
+                } else {
+                    el.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition";
+                }
+            });
+            
+            document.getElementById('viewTitle').innerText = 'My Files';
+            document.getElementById('newFolderBtn').style.display = 'block';
+
+            applyFiltersAndRender();
         };
 
         window.setLayout = (layout) => {
@@ -270,11 +287,9 @@
             } else {
                 filtered = filtered.filter(f => !f.isTrash);
                 if (currentView === 'recent') {
-                    // Filter items from last 24h or just sort by date
                     filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                     filtered = filtered.slice(0, 15); 
                 } else if (currentView === 'all') {
-                    // 2. Filter by Folder if not searching
                     if (!searchQuery) {
                         filtered = filtered.filter(f => (f.parentId || 'root') === currentFolderId);
                     }
@@ -364,10 +379,12 @@
                         `;
                     }
 
-                    // Click to navigate or view
-                    card.onclick = () => {
-                        if (isFolder) navigateTo(file.id, file.name);
-                    };
+                    // FIXED: Click handler now explicitly calls navigateTo for folders
+                    card.addEventListener('click', (e) => {
+                        if (isFolder) {
+                            navigateTo(file.id, file.name);
+                        }
+                    });
 
                     // Drag and Drop Logic
                     if (!file.isTrash) {
@@ -417,11 +434,9 @@
             const itemRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'files', id);
             
             if (currentlyInTrash) {
-                // Restore
                 await updateDoc(itemRef, { isTrash: false });
                 showToast("Restored item");
             } else {
-                // Move to trash
                 await updateDoc(itemRef, { isTrash: true });
                 showToast("Moved to trash");
             }
@@ -501,7 +516,6 @@
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
         dropZone.addEventListener('drop', e => {
             dropZone.classList.remove('active');
-            // If dragging files from OS
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 document.getElementById('fileInput').files = files;
