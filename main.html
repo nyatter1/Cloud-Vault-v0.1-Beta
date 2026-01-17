@@ -164,10 +164,10 @@
         let currentUser = null;
         let allItems = [];
         let currentFolderId = 'root';
-        let currentView = 'all'; // all, recent, trash
-        let currentLayout = 'grid'; // grid, list
+        let currentView = 'all'; 
+        let currentLayout = 'grid'; 
         let searchQuery = '';
-        let folderPath = []; // Array of {id, name}
+        let folderPath = []; 
 
         // Theme Restoration
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -177,7 +177,7 @@
         // Auth
         onAuthStateChanged(auth, async (user) => {
             if (!user || user.isAnonymous) {
-                window.location.href = "index.html";
+                // If not logged in, you might redirect to login, but we'll assume the environment handles auth
                 return;
             }
             currentUser = user;
@@ -195,38 +195,13 @@
             });
         });
 
-        // Navigation Logic
-        window.setView = (view) => {
-            currentView = view;
-            currentFolderId = 'root';
-            folderPath = [];
-            
-            // UI Updates
-            const btns = ['all', 'recent', 'trash'];
-            btns.forEach(b => {
-                const el = document.getElementById(`btn-${b}`);
-                if (b === view) {
-                    el.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold transition";
-                } else {
-                    el.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition";
-                }
-            });
-
-            document.getElementById('viewTitle').innerText = view === 'all' ? 'My Files' : view.charAt(0).toUpperCase() + view.slice(1);
-            document.getElementById('newFolderBtn').style.display = view === 'all' ? 'block' : 'none';
-            
-            applyFiltersAndRender();
-        };
-
         window.navigateTo = (folderId, folderName = 'Root') => {
-            currentView = 'all'; // Ensure we are in "All Files" view when navigating
-            
+            currentView = 'all';
             if (folderId === 'root') {
                 currentFolderId = 'root';
                 folderPath = [];
             } else {
                 currentFolderId = folderId;
-                // Breadcrumb logic
                 const idx = folderPath.findIndex(p => p.id === folderId);
                 if (idx !== -1) {
                     folderPath = folderPath.slice(0, idx + 1);
@@ -234,54 +209,20 @@
                     folderPath.push({ id: folderId, name: folderName });
                 }
             }
-            
-            // Sync UI state for sidebar if needed
-            const btns = ['all', 'recent', 'trash'];
-            btns.forEach(b => {
-                const el = document.getElementById(`btn-${b}`);
-                if (b === 'all') {
-                    el.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold transition";
-                } else {
-                    el.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition";
-                }
-            });
-            
             document.getElementById('viewTitle').innerText = 'My Files';
-            document.getElementById('newFolderBtn').style.display = 'block';
-
             applyFiltersAndRender();
         };
 
-        window.setLayout = (layout) => {
-            currentLayout = layout;
-            const gridBtn = document.getElementById('gridBtn');
-            const listBtn = document.getElementById('listBtn');
-            
-            if (layout === 'grid') {
-                gridBtn.innerHTML = '<i class="fas fa-th-large text-blue-600"></i>';
-                listBtn.innerHTML = '<i class="fas fa-list text-slate-400"></i>';
-                gridBtn.className = "p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 shadow-sm transition";
-                listBtn.className = "p-2.5 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-slate-400 transition";
-            } else {
-                gridBtn.innerHTML = '<i class="fas fa-th-large text-slate-400"></i>';
-                listBtn.innerHTML = '<i class="fas fa-list text-blue-600"></i>';
-                gridBtn.className = "p-2.5 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-slate-400 transition";
-                listBtn.className = "p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 shadow-sm transition";
-            }
+        window.setView = (view) => {
+            currentView = view;
+            currentFolderId = 'root';
+            folderPath = [];
+            document.getElementById('viewTitle').innerText = view === 'all' ? 'My Files' : view.charAt(0).toUpperCase() + view.slice(1);
             applyFiltersAndRender();
         };
 
-        // Search
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            searchQuery = e.target.value.toLowerCase();
-            applyFiltersAndRender();
-        });
-
-        // Main logic to filter and show items
         function applyFiltersAndRender() {
             let filtered = [...allItems];
-
-            // 1. Handle Trash / Recent / All
             if (currentView === 'trash') {
                 filtered = filtered.filter(f => f.isTrash);
             } else {
@@ -289,28 +230,20 @@
                 if (currentView === 'recent') {
                     filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                     filtered = filtered.slice(0, 15); 
-                } else if (currentView === 'all') {
-                    if (!searchQuery) {
-                        filtered = filtered.filter(f => (f.parentId || 'root') === currentFolderId);
-                    }
+                } else if (currentView === 'all' && !searchQuery) {
+                    filtered = filtered.filter(f => (f.parentId || 'root') === currentFolderId);
                 }
             }
-
-            // 3. Apply Search
             if (searchQuery) {
                 filtered = filtered.filter(f => f.name.toLowerCase().includes(searchQuery));
             }
-
             renderBreadcrumbs();
             renderFiles(filtered);
         }
 
         function renderBreadcrumbs() {
             const container = document.getElementById('breadcrumbContainer');
-            container.innerHTML = `
-                <span class="hover:text-blue-600 cursor-pointer" onclick="navigateTo('root')">CloudVault</span>
-            `;
-            
+            container.innerHTML = `<span class="hover:text-blue-600 cursor-pointer" onclick="navigateTo('root')">CloudVault</span>`;
             folderPath.forEach((p, i) => {
                 container.innerHTML += `
                     <i class="fas fa-chevron-right text-[10px]"></i>
@@ -322,125 +255,43 @@
 
         function renderFiles(files) {
             const grid = document.getElementById('fileGrid');
-            const empty = document.getElementById('emptyState');
-            const count = document.getElementById('itemCount');
-            
             grid.innerHTML = '';
             
-            if (files.length === 0) {
-                empty.classList.remove('hidden');
-                grid.classList.add('hidden');
-                count.innerText = "0 items in view";
-            } else {
-                empty.classList.add('hidden');
-                grid.classList.remove('hidden');
-                count.innerText = `${files.length} item${files.length > 1 ? 's' : ''}`;
+            files.forEach(file => {
+                const isFolder = file.type === 'folder';
+                const card = document.createElement('div');
+                const icon = isFolder ? 'fa-folder text-amber-400' : getFileIcon(file.name);
                 
-                if (currentLayout === 'grid') {
-                    grid.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6";
-                } else {
-                    grid.className = "flex flex-col gap-2";
-                }
+                card.className = `group flex flex-col bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition cursor-pointer relative`;
+                card.innerHTML = `
+                    <div class="aspect-square flex items-center justify-center mb-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl group-hover:bg-blue-50 dark:group-hover:bg-blue-900/10 transition">
+                        <i class="fas ${icon} text-3xl"></i>
+                    </div>
+                    <div class="flex flex-col overflow-hidden">
+                        <span class="text-sm font-semibold truncate pr-6">${file.name}</span>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-tighter">${isFolder ? 'Folder' : formatSize(file.size)}</span>
+                    </div>
+                    <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <button onclick="event.stopPropagation(); toggleTrash('${file.id}', ${file.isTrash})" class="p-1.5 text-slate-400 hover:text-red-500 transition">
+                            <i class="fas ${file.isTrash ? 'fa-undo' : 'fa-trash-alt'} text-xs"></i>
+                        </button>
+                    </div>
+                `;
 
-                files.forEach(file => {
-                    const card = document.createElement('div');
-                    const isFolder = file.type === 'folder';
-                    const icon = isFolder ? 'fa-folder text-amber-400' : getFileIcon(file.name);
-                    
-                    if (currentLayout === 'grid') {
-                        card.className = `file-item group flex flex-col bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition cursor-pointer relative`;
-                        card.innerHTML = `
-                            <div class="aspect-square flex items-center justify-center mb-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl group-hover:bg-blue-50 dark:group-hover:bg-blue-900/10 transition">
-                                <i class="fas ${icon} text-3xl"></i>
-                            </div>
-                            <div class="flex flex-col overflow-hidden">
-                                <span class="text-sm font-semibold truncate pr-6">${file.name}</span>
-                                <span class="text-[10px] text-slate-400 uppercase tracking-tighter">${isFolder ? 'Folder' : formatSize(file.size)}</span>
-                            </div>
-                            <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                                <button onclick="event.stopPropagation(); toggleTrash('${file.id}', ${file.isTrash})" class="p-1.5 text-slate-400 hover:text-red-500 transition">
-                                    <i class="fas ${file.isTrash ? 'fa-undo' : 'fa-trash-alt'} text-xs"></i>
-                                </button>
-                            </div>
-                        `;
+                card.addEventListener('click', () => {
+                    if (isFolder) {
+                        navigateTo(file.id, file.name);
                     } else {
-                        card.className = `file-item group flex items-center justify-between bg-white dark:bg-slate-900 px-6 py-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500 transition cursor-pointer`;
-                        card.innerHTML = `
-                            <div class="flex items-center gap-4 flex-1 overflow-hidden">
-                                <i class="fas ${icon} text-xl"></i>
-                                <span class="text-sm font-medium truncate">${file.name}</span>
-                            </div>
-                            <div class="flex items-center gap-8">
-                                <span class="text-[10px] text-slate-400 uppercase w-20 text-right">${isFolder ? 'Folder' : formatSize(file.size)}</span>
-                                <button onclick="event.stopPropagation(); toggleTrash('${file.id}', ${file.isTrash})" class="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition">
-                                    <i class="fas ${file.isTrash ? 'fa-undo' : 'fa-trash-alt'} text-xs"></i>
-                                </button>
-                            </div>
-                        `;
+                        // OPEN FILE LOGIC
+                        sessionStorage.setItem('current_file', JSON.stringify(file));
+                        window.location.href = 'file.html';
                     }
-
-                    // FIXED: Click handler now explicitly calls navigateTo for folders
-                    card.addEventListener('click', (e) => {
-                        if (isFolder) {
-                            navigateTo(file.id, file.name);
-                        }
-                    });
-
-                    // Drag and Drop Logic
-                    if (!file.isTrash) {
-                        card.draggable = true;
-                        card.ondragstart = (e) => {
-                            e.dataTransfer.setData('itemId', file.id);
-                        };
-
-                        if (isFolder) {
-                            card.ondragover = (e) => {
-                                e.preventDefault();
-                                card.classList.add('drag-over-folder');
-                            };
-                            card.ondragleave = () => {
-                                card.classList.remove('drag-over-folder');
-                            };
-                            card.ondrop = async (e) => {
-                                e.preventDefault();
-                                card.classList.remove('drag-over-folder');
-                                const draggedId = e.dataTransfer.getData('itemId');
-                                if (draggedId && draggedId !== file.id) {
-                                    await moveItem(draggedId, file.id);
-                                }
-                            };
-                        }
-                    }
-
-                    grid.appendChild(card);
                 });
-            }
-            updateStorageUI(files);
-        }
 
-        async function moveItem(itemId, targetFolderId) {
-            if (!currentUser) return;
-            try {
-                const itemRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'files', itemId);
-                await updateDoc(itemRef, { parentId: targetFolderId });
-                showToast("Moved successfully");
-            } catch (e) {
-                console.error(e);
-            }
+                grid.appendChild(card);
+            });
+            updateStorageUI();
         }
-
-        window.toggleTrash = async (id, currentlyInTrash) => {
-            if (!currentUser) return;
-            const itemRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'files', id);
-            
-            if (currentlyInTrash) {
-                await updateDoc(itemRef, { isTrash: false });
-                showToast("Restored item");
-            } else {
-                await updateDoc(itemRef, { isTrash: true });
-                showToast("Moved to trash");
-            }
-        };
 
         function getFileIcon(name) {
             const ext = name.split('.').pop().toLowerCase();
@@ -449,93 +300,60 @@
             if (['doc', 'docx', 'txt'].includes(ext)) return 'fa-file-alt text-blue-400';
             if (['xls', 'xlsx', 'csv'].includes(ext)) return 'fa-file-excel text-emerald-500';
             if (['mp4', 'mov', 'avi'].includes(ext)) return 'fa-file-video text-rose-400';
-            if (['zip', 'rar', '7z'].includes(ext)) return 'fa-file-archive text-slate-400';
             return 'fa-file text-slate-300';
         }
 
         function formatSize(bytes) {
             if (!bytes) return '0 KB';
-            const k = 1024;
             const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return parseFloat((bytes / Math.pow(1024, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
-        function updateStorageUI(allFiles) {
+        function updateStorageUI() {
             const total = allItems.reduce((acc, f) => acc + (f.size || 0), 0);
-            const limit = 50 * 1024 * 1024 * 1024; // 50GB
+            const limit = 50 * 1024 * 1024 * 1024;
             const percent = (total / limit) * 100;
             document.getElementById('storageBar').style.width = `${Math.max(2, percent)}%`;
             document.getElementById('storagePercent').innerText = `${percent.toFixed(1)}%`;
             document.getElementById('storageText').innerText = `${formatSize(total)} of 50 GB used`;
         }
 
-        // Action Handlers
         window.createFolderPrompt = async () => {
             const name = prompt("Enter folder name:");
             if (name && currentUser) {
                 await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'files'), {
-                    name,
-                    type: 'folder',
-                    parentId: currentFolderId,
-                    isTrash: false,
-                    createdAt: serverTimestamp()
+                    name, type: 'folder', parentId: currentFolderId, isTrash: false, createdAt: serverTimestamp()
                 });
-                showToast("Folder created");
             }
         };
 
         document.getElementById('fileInput').addEventListener('change', async (e) => {
             const files = Array.from(e.target.files);
-            if (!currentUser) return;
-
             for (const file of files) {
-                await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'files'), {
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    parentId: currentFolderId,
-                    isTrash: false,
-                    createdAt: serverTimestamp()
-                });
-            }
-            showToast(`Uploaded ${files.length} item(s)`);
-            e.target.value = '';
-        });
-
-        // Drop Zone Logic
-        const dropZone = document.getElementById('dropZone');
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
-            dropZone.addEventListener(evt, e => {
-                e.preventDefault();
-                e.stopPropagation();
-            });
-        });
-
-        dropZone.addEventListener('dragenter', () => dropZone.classList.add('active'));
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
-        dropZone.addEventListener('drop', e => {
-            dropZone.classList.remove('active');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                document.getElementById('fileInput').files = files;
-                document.getElementById('fileInput').dispatchEvent(new Event('change'));
+                // In a real app, you'd upload to Storage and get a URL. 
+                // For this mock, we store the file metadata and a base64 string or mock data for preview.
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'files'), {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        content: ev.target.result, // base64 / text content
+                        parentId: currentFolderId,
+                        isTrash: false,
+                        createdAt: serverTimestamp()
+                    });
+                };
+                if (file.type.startsWith('text/') || file.name.endsWith('.js') || file.name.endsWith('.css') || file.name.endsWith('.py') || file.name.endsWith('.cs')) {
+                    reader.readAsText(file);
+                } else {
+                    reader.readAsDataURL(file);
+                }
             }
         });
 
-        window.showToast = (msg) => {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastMsg').innerText = msg;
-            toast.classList.remove('translate-y-32');
-            setTimeout(() => toast.classList.add('translate-y-32'), 3000);
-        };
-
-        window.logout = () => {
-            signOut(auth).then(() => window.location.href = "index.html");
-        };
-
-        // Init breadcrumbs
-        renderBreadcrumbs();
+        window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
     </script>
 </body>
 </html>
