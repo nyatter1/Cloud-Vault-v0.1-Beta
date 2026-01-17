@@ -321,8 +321,15 @@
             setDoc 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Environment variables
-        const firebaseConfig = JSON.parse(__firebase_config);
+        // Safely extract environment variables
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "dummy-key",
+            authDomain: "dummy.firebaseapp.com",
+            projectId: "dummy-id",
+            storageBucket: "dummy.appspot.com",
+            messagingSenderId: "000000",
+            appId: "0:0000:web:0000"
+        };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'chatlaxy-pro';
 
         const app = initializeApp(firebaseConfig);
@@ -364,7 +371,6 @@
                 });
 
                 showToast("Account created! Redirecting...");
-                // Note: Redirect is handled by onAuthStateChanged listener
             } catch (error) {
                 console.error("Signup Error:", error);
                 showToast(`Error: ${error.message}`);
@@ -389,7 +395,6 @@
             try {
                 await signInWithEmailAndPassword(auth, email, password);
                 showToast("Welcome back!");
-                // Note: Redirect is handled by onAuthStateChanged listener
             } catch (error) {
                 console.error("Login Error:", error);
                 showToast(`Login failed: ${error.message}`);
