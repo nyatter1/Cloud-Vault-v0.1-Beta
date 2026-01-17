@@ -191,7 +191,7 @@
             <h2 class="text-2xl font-bold mb-2 dark:text-white">Welcome Back</h2>
             <p class="text-slate-500 dark:text-slate-400 mb-8 text-sm">Log in to your CloudVault account</p>
             
-            <form id="loginForm" class="space-y-4">
+            <form id="loginForm" class="space-y-4" onsubmit="return false;">
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
                     <input type="email" id="loginEmail" required class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="you@example.com">
@@ -200,7 +200,7 @@
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
                     <input type="password" id="loginPassword" required class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="••••••••">
                 </div>
-                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200 dark:shadow-none">
+                <button type="submit" id="loginBtn" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200 dark:shadow-none">
                     Sign In
                 </button>
             </form>
@@ -217,7 +217,7 @@
             <h2 class="text-2xl font-bold mb-2 dark:text-white">Create Account</h2>
             <p class="text-slate-500 dark:text-slate-400 mb-8 text-sm">Join CloudVault for 50GB free storage</p>
             
-            <form id="signupForm" class="space-y-4">
+            <form id="signupForm" class="space-y-4" onsubmit="return false;">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">First Name</label>
@@ -236,7 +236,7 @@
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
                     <input type="password" id="signupPassword" required class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="Min 8 characters">
                 </div>
-                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200 dark:shadow-none">
+                <button type="submit" id="signupBtn" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200 dark:shadow-none">
                     Create Free Account
                 </button>
             </form>
@@ -332,7 +332,7 @@
         // Listen for authentication state changes
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                console.log("User detected, redirecting...");
+                console.log("User detected, redirecting to main.html...");
                 window.location.href = 'main.html';
             }
         });
@@ -340,11 +340,13 @@
         // Signup Logic
         const handleSignup = async (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            
             const email = document.getElementById('signupEmail').value;
             const password = document.getElementById('signupPassword').value;
             const firstName = document.getElementById('signupFirst').value;
             const lastName = document.getElementById('signupLast').value;
-            const btn = e.target.querySelector('button[type="submit"]');
+            const btn = document.getElementById('signupBtn');
 
             btn.disabled = true;
             btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Creating...`;
@@ -369,14 +371,17 @@
                 btn.disabled = false;
                 btn.innerText = "Create Free Account";
             }
+            return false;
         };
 
         // Login Logic
         const handleLogin = async (e) => {
             e.preventDefault();
+            e.stopPropagation();
+
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            const btn = e.target.querySelector('button[type="submit"]');
+            const btn = document.getElementById('loginBtn');
 
             btn.disabled = true;
             btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Signing in...`;
@@ -384,12 +389,14 @@
             try {
                 await signInWithEmailAndPassword(auth, email, password);
                 showToast("Welcome back!");
+                // Note: Redirect is handled by onAuthStateChanged listener
             } catch (error) {
                 console.error("Login Error:", error);
                 showToast(`Login failed: ${error.message}`);
                 btn.disabled = false;
                 btn.innerText = "Sign In";
             }
+            return false;
         };
 
         // Bind events
