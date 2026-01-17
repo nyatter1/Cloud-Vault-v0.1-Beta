@@ -27,6 +27,12 @@
         .file-card:hover .file-actions { opacity: 1; }
         .drop-zone.active { border-color: #2563eb; background: rgba(37, 99, 235, 0.05); }
         .drag-over-folder { transform: scale(1.05); border-color: #2563eb !important; background: rgba(37, 99, 235, 0.1) !important; }
+        
+        /* Custom scrollbar for a premium feel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
@@ -42,7 +48,7 @@
                     <span class="font-bold text-lg tracking-tight">CloudVault</span>
                 </div>
                 
-                <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 w-96 border border-transparent focus-within:border-blue-500 transition">
+                <div class="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 w-96 border border-transparent focus-within:border-blue-50 transition">
                     <i class="fas fa-search text-slate-400 mr-2"></i>
                     <input type="text" id="searchInput" placeholder="Search your vault..." class="bg-transparent border-none outline-none text-sm w-full">
                 </div>
@@ -50,11 +56,12 @@
 
             <div class="flex items-center gap-4">
                 <div class="hidden sm:flex flex-col items-end mr-2">
-                    <span id="userName" class="text-sm font-bold">User</span>
-                    <span class="text-[10px] text-slate-500 uppercase tracking-widest">Beta Pro</span>
+                    <span id="userName" class="text-sm font-bold truncate max-w-[120px]">Guest User</span>
+                    <span id="userBadge" class="text-[10px] text-slate-500 uppercase tracking-widest">Free Account</span>
                 </div>
-                <button onclick="logout()" class="p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition">
-                    <i class="fas fa-sign-out-alt"></i>
+                <button id="themeToggle" class="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition">
+                    <i class="fas fa-moon dark:hidden"></i>
+                    <i class="fas fa-sun hidden dark:block"></i>
                 </button>
             </div>
         </div>
@@ -85,7 +92,7 @@
                     <span id="storagePercent">0%</span>
                 </div>
                 <div class="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div id="storageBar" class="h-full bg-blue-600" style="width: 0%"></div>
+                    <div id="storageBar" class="h-full bg-blue-600 transition-all duration-500" style="width: 0%"></div>
                 </div>
                 <p id="storageText" class="text-[10px] text-slate-400 mt-2">0 MB of 50 GB used</p>
             </div>
@@ -96,7 +103,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 class="text-2xl font-bold" id="viewTitle">My Files</h1>
-                    <p class="text-sm text-slate-500" id="itemCount">0 items in your vault</p>
+                    <p class="text-sm text-slate-500" id="itemCount">Loading your vault...</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="createFolderPrompt()" id="newFolderBtn" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 transition text-slate-600 dark:text-slate-400">
@@ -113,7 +120,7 @@
             </div>
 
             <!-- Breadcrumbs -->
-            <div id="breadcrumbContainer" class="flex items-center gap-2 text-sm text-slate-500 mb-6">
+            <div id="breadcrumbContainer" class="flex items-center gap-2 text-sm text-slate-500 mb-6 flex-wrap">
                 <!-- Dynamically generated -->
             </div>
 
@@ -127,7 +134,7 @@
                     <i class="fas fa-cloud-upload-alt text-4xl text-slate-300"></i>
                 </div>
                 <h3 class="font-bold text-lg">No items found</h3>
-                <p class="text-sm max-w-xs">Try searching for something else or upload a new file.</p>
+                <p class="text-sm max-w-xs">Upload your first file to get started or create a folder.</p>
             </div>
         </main>
     </div>
@@ -143,19 +150,13 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDncManQICLPVT8WuMVO5kB-Am32VI12wo",
-            authDomain: "chatlaxy-pro.firebaseapp.com",
-            projectId: "chatlaxy-pro",
-            storageBucket: "chatlaxy-pro.firebasestorage.app",
-            messagingSenderId: "807800533954",
-            appId: "1:807800533954:web:67b97dbd432bdbc3cb9c5b"
-        };
+        // Global environment variables
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
-        const appId = 'chatlaxy-pro';
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -164,39 +165,78 @@
         let currentUser = null;
         let allItems = [];
         let currentFolderId = 'root';
-        let currentView = 'all'; 
-        let currentLayout = 'grid'; 
+        let currentView = 'all'; // all, recent, trash
+        let currentLayout = 'grid'; // grid, list
         let searchQuery = '';
-        let folderPath = []; 
+        let folderPath = []; // Array of {id, name}
 
-        // Theme Restoration
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        }
-
-        // Auth
-        onAuthStateChanged(auth, async (user) => {
-            if (!user || user.isAnonymous) {
-                // If not logged in, you might redirect to login, but we'll assume the environment handles auth
-                return;
+        // --- AUTHENTICATION ---
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth failed:", err);
             }
+        };
+
+        onAuthStateChanged(auth, (user) => {
             currentUser = user;
-
-            const profileRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile');
-            const profileSnap = await getDoc(profileRef);
-            if (profileSnap.exists()) {
-                document.getElementById('userName').innerText = profileSnap.data().firstName || 'User';
+            if (user) {
+                document.getElementById('userName').innerText = user.isAnonymous ? "Guest User" : user.displayName || "Member";
+                document.getElementById('userBadge').innerText = user.isAnonymous ? "Temporary" : "Beta Pro";
+                
+                // Fetch user data from Firestore using the MANDATORY path structure
+                setupDataListener(user.uid);
             }
-
-            const filesRef = collection(db, 'artifacts', appId, 'users', user.uid, 'files');
-            onSnapshot(filesRef, (snapshot) => {
-                allItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                applyFiltersAndRender();
-            });
         });
 
+        // Start Auth process
+        initAuth();
+
+        // --- DATA LISTENER ---
+        function setupDataListener(uid) {
+            // RULE 1: Use specific path structure
+            const filesRef = collection(db, 'artifacts', appId, 'users', uid, 'files');
+            
+            // RULE 2 & 3: Simple query and guard with user check
+            onSnapshot(filesRef, (snapshot) => {
+                if (!currentUser) return;
+                allItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                applyFiltersAndRender();
+            }, (error) => {
+                console.error("Firestore Listener Error:", error);
+            });
+        }
+
+        // --- UI LOGIC ---
+        window.setView = (view) => {
+            currentView = view;
+            currentFolderId = 'root';
+            folderPath = [];
+            
+            // UI Toggle
+            const views = ['all', 'recent', 'trash'];
+            views.forEach(v => {
+                const el = document.getElementById(`btn-${v}`);
+                if (v === view) {
+                    el.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold transition";
+                } else {
+                    el.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition";
+                }
+            });
+
+            document.getElementById('viewTitle').innerText = view === 'all' ? 'My Files' : view.charAt(0).toUpperCase() + view.slice(1);
+            document.getElementById('newFolderBtn').style.display = (view === 'all') ? 'block' : 'none';
+            
+            applyFiltersAndRender();
+        };
+
         window.navigateTo = (folderId, folderName = 'Root') => {
-            currentView = 'all';
+            currentView = 'all'; 
             if (folderId === 'root') {
                 currentFolderId = 'root';
                 folderPath = [];
@@ -209,151 +249,296 @@
                     folderPath.push({ id: folderId, name: folderName });
                 }
             }
-            document.getElementById('viewTitle').innerText = 'My Files';
+            setView('all'); // Synchronize sidebar UI
+        };
+
+        window.setLayout = (layout) => {
+            currentLayout = layout;
+            const gridBtn = document.getElementById('gridBtn');
+            const listBtn = document.getElementById('listBtn');
+            
+            if (layout === 'grid') {
+                gridBtn.innerHTML = '<i class="fas fa-th-large text-blue-600"></i>';
+                listBtn.innerHTML = '<i class="fas fa-list text-slate-400"></i>';
+                gridBtn.classList.add('bg-white', 'dark:bg-slate-800');
+                listBtn.classList.remove('bg-white', 'dark:bg-slate-800');
+            } else {
+                gridBtn.innerHTML = '<i class="fas fa-th-large text-slate-400"></i>';
+                listBtn.innerHTML = '<i class="fas fa-list text-blue-600"></i>';
+                listBtn.classList.add('bg-white', 'dark:bg-slate-800');
+                gridBtn.classList.remove('bg-white', 'dark:bg-slate-800');
+            }
             applyFiltersAndRender();
         };
 
-        window.setView = (view) => {
-            currentView = view;
-            currentFolderId = 'root';
-            folderPath = [];
-            document.getElementById('viewTitle').innerText = view === 'all' ? 'My Files' : view.charAt(0).toUpperCase() + view.slice(1);
-            applyFiltersAndRender();
-        };
-
+        // --- FILTERING & RENDERING ---
         function applyFiltersAndRender() {
             let filtered = [...allItems];
+
             if (currentView === 'trash') {
                 filtered = filtered.filter(f => f.isTrash);
             } else {
                 filtered = filtered.filter(f => !f.isTrash);
                 if (currentView === 'recent') {
                     filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-                    filtered = filtered.slice(0, 15); 
-                } else if (currentView === 'all' && !searchQuery) {
-                    filtered = filtered.filter(f => (f.parentId || 'root') === currentFolderId);
+                    filtered = filtered.slice(0, 20); 
+                } else if (currentView === 'all') {
+                    if (!searchQuery) {
+                        filtered = filtered.filter(f => (f.parentId || 'root') === currentFolderId);
+                    }
                 }
             }
+
             if (searchQuery) {
                 filtered = filtered.filter(f => f.name.toLowerCase().includes(searchQuery));
             }
+
             renderBreadcrumbs();
             renderFiles(filtered);
+            updateStorageUI();
         }
 
         function renderBreadcrumbs() {
             const container = document.getElementById('breadcrumbContainer');
-            container.innerHTML = `<span class="hover:text-blue-600 cursor-pointer" onclick="navigateTo('root')">CloudVault</span>`;
+            container.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="hover:text-blue-600 cursor-pointer transition" onclick="navigateTo('root')">
+                         <i class="fas fa-home mr-1"></i> CloudVault
+                    </span>
+                </div>
+            `;
+            
             folderPath.forEach((p, i) => {
-                container.innerHTML += `
-                    <i class="fas fa-chevron-right text-[10px]"></i>
-                    <span class="cursor-pointer ${i === folderPath.length - 1 ? 'font-medium text-slate-900 dark:text-white' : 'hover:text-blue-600'}" 
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-2";
+                div.innerHTML = `
+                    <i class="fas fa-chevron-right text-[10px] opacity-30"></i>
+                    <span class="cursor-pointer ${i === folderPath.length - 1 ? 'font-bold text-slate-900 dark:text-white' : 'hover:text-blue-600 transition'}" 
                           onclick="navigateTo('${p.id}', '${p.name}')">${p.name}</span>
                 `;
+                container.appendChild(div);
             });
         }
 
         function renderFiles(files) {
             const grid = document.getElementById('fileGrid');
+            const empty = document.getElementById('emptyState');
+            const count = document.getElementById('itemCount');
+            
             grid.innerHTML = '';
             
-            files.forEach(file => {
-                const isFolder = file.type === 'folder';
-                const card = document.createElement('div');
-                const icon = isFolder ? 'fa-folder text-amber-400' : getFileIcon(file.name);
+            if (files.length === 0) {
+                empty.classList.remove('hidden');
+                grid.classList.add('hidden');
+                count.innerText = "Empty vault section";
+            } else {
+                empty.classList.add('hidden');
+                grid.classList.remove('hidden');
+                count.innerText = `${files.length} item${files.length > 1 ? 's' : ''} in view`;
                 
-                card.className = `group flex flex-col bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition cursor-pointer relative`;
-                card.innerHTML = `
-                    <div class="aspect-square flex items-center justify-center mb-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl group-hover:bg-blue-50 dark:group-hover:bg-blue-900/10 transition">
-                        <i class="fas ${icon} text-3xl"></i>
-                    </div>
-                    <div class="flex flex-col overflow-hidden">
-                        <span class="text-sm font-semibold truncate pr-6">${file.name}</span>
-                        <span class="text-[10px] text-slate-400 uppercase tracking-tighter">${isFolder ? 'Folder' : formatSize(file.size)}</span>
-                    </div>
-                    <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <button onclick="event.stopPropagation(); toggleTrash('${file.id}', ${file.isTrash})" class="p-1.5 text-slate-400 hover:text-red-500 transition">
-                            <i class="fas ${file.isTrash ? 'fa-undo' : 'fa-trash-alt'} text-xs"></i>
-                        </button>
-                    </div>
-                `;
+                if (currentLayout === 'grid') {
+                    grid.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6";
+                } else {
+                    grid.className = "flex flex-col gap-2 w-full";
+                }
 
-                card.addEventListener('click', () => {
-                    if (isFolder) {
-                        navigateTo(file.id, file.name);
+                files.forEach(file => {
+                    const card = document.createElement('div');
+                    const isFolder = file.type === 'folder';
+                    const icon = isFolder ? 'fa-folder text-amber-400' : getFileIcon(file.name);
+                    
+                    if (currentLayout === 'grid') {
+                        card.className = `group flex flex-col bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:shadow-md transition cursor-pointer relative`;
+                        card.innerHTML = `
+                            <div class="aspect-square flex items-center justify-center mb-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl group-hover:bg-blue-50 dark:group-hover:bg-blue-900/10 transition">
+                                <i class="fas ${icon} text-3xl"></i>
+                            </div>
+                            <div class="flex flex-col overflow-hidden">
+                                <span class="text-sm font-semibold truncate pr-6">${file.name}</span>
+                                <span class="text-[10px] text-slate-400 uppercase tracking-tighter">${isFolder ? 'Folder' : formatSize(file.size)}</span>
+                            </div>
+                            <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <button onclick="event.stopPropagation(); window.toggleTrash('${file.id}', ${file.isTrash})" class="p-1.5 text-slate-400 hover:text-red-500 transition">
+                                    <i class="fas ${file.isTrash ? 'fa-undo' : 'fa-trash-alt'} text-xs"></i>
+                                </button>
+                            </div>
+                        `;
                     } else {
-                        // OPEN FILE LOGIC
-                        sessionStorage.setItem('current_file', JSON.stringify(file));
-                        window.location.href = 'file.html';
+                        card.className = `group flex items-center justify-between bg-white dark:bg-slate-900 px-6 py-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500 hover:shadow-sm transition cursor-pointer`;
+                        card.innerHTML = `
+                            <div class="flex items-center gap-4 flex-1 overflow-hidden">
+                                <i class="fas ${icon} text-xl"></i>
+                                <span class="text-sm font-medium truncate">${file.name}</span>
+                            </div>
+                            <div class="flex items-center gap-8">
+                                <span class="text-[10px] text-slate-400 uppercase w-20 text-right">${isFolder ? 'Folder' : formatSize(file.size)}</span>
+                                <button onclick="event.stopPropagation(); window.toggleTrash('${file.id}', ${file.isTrash})" class="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition">
+                                    <i class="fas ${file.isTrash ? 'fa-undo' : 'fa-trash-alt'} text-xs"></i>
+                                </button>
+                            </div>
+                        `;
                     }
-                });
 
-                grid.appendChild(card);
-            });
-            updateStorageUI();
+                    card.addEventListener('click', () => {
+                        if (isFolder) navigateTo(file.id, file.name);
+                    });
+
+                    // Drag Support
+                    if (!file.isTrash) {
+                        card.draggable = true;
+                        card.addEventListener('dragstart', (e) => {
+                            e.dataTransfer.setData('itemId', file.id);
+                        });
+
+                        if (isFolder) {
+                            card.addEventListener('dragover', (e) => {
+                                e.preventDefault();
+                                card.classList.add('drag-over-folder');
+                            });
+                            card.addEventListener('dragleave', () => card.classList.remove('drag-over-folder'));
+                            card.addEventListener('drop', async (e) => {
+                                e.preventDefault();
+                                card.classList.remove('drag-over-folder');
+                                const draggedId = e.dataTransfer.getData('itemId');
+                                if (draggedId && draggedId !== file.id) {
+                                    moveItem(draggedId, file.id);
+                                }
+                            });
+                        }
+                    }
+
+                    grid.appendChild(card);
+                });
+            }
         }
 
+        // --- ACTIONS ---
+        async function moveItem(itemId, targetFolderId) {
+            if (!currentUser) return;
+            const itemRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'files', itemId);
+            await updateDoc(itemRef, { parentId: targetFolderId });
+            showToast("Item moved");
+        }
+
+        window.toggleTrash = async (id, currentlyInTrash) => {
+            if (!currentUser) return;
+            const itemRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'files', id);
+            await updateDoc(itemRef, { isTrash: !currentlyInTrash });
+            showToast(currentlyInTrash ? "Restored from trash" : "Moved to trash");
+        };
+
+        window.createFolderPrompt = async () => {
+            const name = prompt("Folder name:");
+            if (!name || !currentUser) return;
+            
+            await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'files'), {
+                name,
+                type: 'folder',
+                parentId: currentFolderId,
+                isTrash: false,
+                createdAt: serverTimestamp()
+            });
+            showToast("Folder created");
+        };
+
+        // File Input Handler
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            if (!currentUser || files.length === 0) return;
+
+            showToast(`Uploading ${files.length} file(s)...`);
+            for (const file of files) {
+                await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'files'), {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type || 'application/octet-stream',
+                    parentId: currentFolderId,
+                    isTrash: false,
+                    createdAt: serverTimestamp()
+                });
+            }
+            showToast("Upload complete");
+            e.target.value = '';
+        });
+
+        // Search Input
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            applyFiltersAndRender();
+        });
+
+        // Theme Toggle
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+
+        // Drop Zone
+        const dropZone = document.getElementById('dropZone');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        dropZone.addEventListener('dragenter', () => dropZone.classList.add('active'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+        dropZone.addEventListener('drop', e => {
+            dropZone.classList.remove('active');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const input = document.getElementById('fileInput');
+                input.files = files;
+                input.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Helper: Storage
+        function updateStorageUI() {
+            const total = allItems.reduce((acc, f) => acc + (f.size || 0), 0);
+            const limit = 50 * 1024 * 1024 * 1024; 
+            const percent = (total / limit) * 100;
+            document.getElementById('storageBar').style.width = `${Math.max(1, percent)}%`;
+            document.getElementById('storagePercent').innerText = `${percent.toFixed(2)}%`;
+            document.getElementById('storageText').innerText = `${formatSize(total)} of 50 GB used`;
+        }
+
+        // Helpers
         function getFileIcon(name) {
             const ext = name.split('.').pop().toLowerCase();
-            if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(ext)) return 'fa-file-image text-purple-500';
-            if (['pdf'].includes(ext)) return 'fa-file-pdf text-red-500';
-            if (['doc', 'docx', 'txt'].includes(ext)) return 'fa-file-alt text-blue-400';
-            if (['xls', 'xlsx', 'csv'].includes(ext)) return 'fa-file-excel text-emerald-500';
-            if (['mp4', 'mov', 'avi'].includes(ext)) return 'fa-file-video text-rose-400';
-            return 'fa-file text-slate-300';
+            const map = {
+                jpg: 'fa-file-image text-purple-500', jpeg: 'fa-file-image text-purple-500', 
+                png: 'fa-file-image text-purple-500', gif: 'fa-file-image text-purple-500',
+                pdf: 'fa-file-pdf text-red-500',
+                doc: 'fa-file-alt text-blue-400', docx: 'fa-file-alt text-blue-400', txt: 'fa-file-alt text-blue-400',
+                xls: 'fa-file-excel text-emerald-500', xlsx: 'fa-file-excel text-emerald-500',
+                mp4: 'fa-file-video text-rose-400', mov: 'fa-file-video text-rose-400',
+                zip: 'fa-file-archive text-slate-400', rar: 'fa-file-archive text-slate-400'
+            };
+            return map[ext] || 'fa-file text-slate-300';
         }
 
         function formatSize(bytes) {
             if (!bytes) return '0 KB';
+            const k = 1024;
             const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(1024));
-            return parseFloat((bytes / Math.pow(1024, i)).toFixed(1)) + ' ' + sizes[i];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
-        function updateStorageUI() {
-            const total = allItems.reduce((acc, f) => acc + (f.size || 0), 0);
-            const limit = 50 * 1024 * 1024 * 1024;
-            const percent = (total / limit) * 100;
-            document.getElementById('storageBar').style.width = `${Math.max(2, percent)}%`;
-            document.getElementById('storagePercent').innerText = `${percent.toFixed(1)}%`;
-            document.getElementById('storageText').innerText = `${formatSize(total)} of 50 GB used`;
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('translate-y-32');
+            setTimeout(() => toast.classList.add('translate-y-32'), 3000);
         }
 
-        window.createFolderPrompt = async () => {
-            const name = prompt("Enter folder name:");
-            if (name && currentUser) {
-                await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'files'), {
-                    name, type: 'folder', parentId: currentFolderId, isTrash: false, createdAt: serverTimestamp()
-                });
-            }
-        };
+        // Theme Initialization
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
 
-        document.getElementById('fileInput').addEventListener('change', async (e) => {
-            const files = Array.from(e.target.files);
-            for (const file of files) {
-                // In a real app, you'd upload to Storage and get a URL. 
-                // For this mock, we store the file metadata and a base64 string or mock data for preview.
-                const reader = new FileReader();
-                reader.onload = async (ev) => {
-                    await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'files'), {
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        content: ev.target.result, // base64 / text content
-                        parentId: currentFolderId,
-                        isTrash: false,
-                        createdAt: serverTimestamp()
-                    });
-                };
-                if (file.type.startsWith('text/') || file.name.endsWith('.js') || file.name.endsWith('.css') || file.name.endsWith('.py') || file.name.endsWith('.cs')) {
-                    reader.readAsText(file);
-                } else {
-                    reader.readAsDataURL(file);
-                }
-            }
-        });
-
-        window.logout = () => signOut(auth).then(() => window.location.href = "index.html");
     </script>
 </body>
 </html>
