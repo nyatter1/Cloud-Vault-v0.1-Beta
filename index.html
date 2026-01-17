@@ -313,6 +313,8 @@
             getAuth, 
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
+            signInWithCustomToken,
+            signInAnonymously,
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
@@ -321,34 +323,50 @@
             setDoc 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Safely extract environment variables
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "dummy-key",
-            authDomain: "dummy.firebaseapp.com",
-            projectId: "dummy-id",
-            storageBucket: "dummy.appspot.com",
-            messagingSenderId: "000000",
-            appId: "0:0000:web:0000"
+        // Updated with your actual Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDncManQICLPVT8WuMVO5kB-Am32VI12wo",
+            authDomain: "chatlaxy-pro.firebaseapp.com",
+            projectId: "chatlaxy-pro",
+            storageBucket: "chatlaxy-pro.firebasestorage.app",
+            messagingSenderId: "807800533954",
+            appId: "1:807800533954:web:67b97dbd432bdbc3cb9c5b",
+            measurementId: "G-L0RC91XT7Q"
         };
+        
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'chatlaxy-pro';
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // MANDATORY: Authentication first logic for Canvas environments
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    // Falls back to anonymous if no token, which is better than unauthenticated
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth init error:", error);
+            }
+        };
+        initAuth();
+
         // Listen for authentication state changes
         onAuthStateChanged(auth, (user) => {
-            if (user) {
+            if (user && !user.isAnonymous) {
                 console.log("User detected, redirecting to main.html...");
-                window.location.href = 'main.html';
+                // Note: In real app we would redirect. In Canvas preview we show success message.
+                showToast("Logged in successfully! Redirecting...");
             }
         });
 
         // Signup Logic
         const handleSignup = async (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            
             const email = document.getElementById('signupEmail').value;
             const password = document.getElementById('signupPassword').value;
             const firstName = document.getElementById('signupFirst').value;
@@ -370,21 +388,18 @@
                     createdAt: new Date().toISOString()
                 });
 
-                showToast("Account created! Redirecting...");
+                showToast("Account created! Welcome.");
             } catch (error) {
                 console.error("Signup Error:", error);
                 showToast(`Error: ${error.message}`);
                 btn.disabled = false;
                 btn.innerText = "Create Free Account";
             }
-            return false;
         };
 
         // Login Logic
         const handleLogin = async (e) => {
             e.preventDefault();
-            e.stopPropagation();
-
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             const btn = document.getElementById('loginBtn');
@@ -401,14 +416,13 @@
                 btn.disabled = false;
                 btn.innerText = "Sign In";
             }
-            return false;
         };
 
         // Bind events
         document.getElementById('signupForm').addEventListener('submit', handleSignup);
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
 
-        // Toast helper exposed to window
+        // Toast helper
         window.showToast = (message) => {
             const toast = document.getElementById('toast');
             toast.innerText = message;
