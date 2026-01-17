@@ -359,8 +359,11 @@
         onAuthStateChanged(auth, (user) => {
             if (user && !user.isAnonymous) {
                 console.log("User detected, redirecting to main.html...");
-                // Note: In real app we would redirect. In Canvas preview we show success message.
                 showToast("Logged in successfully! Redirecting...");
+                // Delay redirect slightly to show the toast message
+                setTimeout(() => {
+                    window.location.href = "main.html";
+                }, 1000);
             }
         });
 
@@ -388,7 +391,8 @@
                     createdAt: new Date().toISOString()
                 });
 
-                showToast("Account created! Welcome.");
+                showToast("Account created! Redirecting...");
+                // Redirection is handled by onAuthStateChanged
             } catch (error) {
                 console.error("Signup Error:", error);
                 showToast(`Error: ${error.message}`);
@@ -409,7 +413,8 @@
 
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                showToast("Welcome back!");
+                showToast("Welcome back! Redirecting...");
+                // Redirection is handled by onAuthStateChanged
             } catch (error) {
                 console.error("Login Error:", error);
                 showToast(`Login failed: ${error.message}`);
