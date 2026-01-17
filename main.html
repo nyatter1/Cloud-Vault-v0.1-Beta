@@ -12,7 +12,7 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#2563eb',
+                        primary: '#2563eb'
                     }
                 }
             }
@@ -21,18 +21,13 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease; }
-        .dark { background-color: #0f172a; color: white; }
+        .timer-card { backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen">
 
-    <!-- Auth Guard Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 z-[100] bg-white dark:bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-500">
-        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-slate-500 dark:text-slate-400 font-medium">Loading your vault...</p>
-    </div>
-
-    <nav class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+    <!-- Navigation -->
+    <nav class="border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white">
@@ -40,47 +35,76 @@
                 </div>
                 <span class="font-bold text-lg">CloudVault</span>
             </div>
-
             <div class="flex items-center gap-4">
-                <button onclick="toggleDarkMode()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-                    <i id="themeIcon" class="fas fa-moon"></i>
-                </button>
-                <div class="h-8 w-[1px] bg-slate-200 dark:border-slate-800"></div>
-                <button onclick="handleLogout()" class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-red-500 transition">
-                    Log Out
+                <button onclick="logout()" class="text-sm font-medium text-slate-500 hover:text-red-500 transition">
+                    <i class="fas fa-sign-out-alt mr-1"></i> Logout
                 </button>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-4xl mx-auto px-4 py-20 text-center">
-        <div class="mb-8 inline-flex items-center justify-center w-24 h-24 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 mb-6">
-            <i class="fas fa-user-circle text-5xl"></i>
-        </div>
-        
-        <h1 class="text-4xl md:text-5xl font-extrabold mb-4">
-            Welcome, <span id="userNameDisplay" class="text-blue-600">User</span>!
-        </h1>
-        
-        <p class="text-lg text-slate-600 dark:text-slate-400 max-w-lg mx-auto mb-12">
-            You've successfully entered your secure vault. Your files are encrypted and ready for access.
-        </p>
+    <main class="max-w-4xl mx-auto px-4 py-12">
+        <!-- Welcome Header -->
+        <header class="mb-12">
+            <h1 id="welcomeMessage" class="text-3xl md:text-4xl font-bold mb-2">Welcome to the Beta, <span class="text-blue-600">User</span>!</h1>
+            <p class="text-slate-500 dark:text-slate-400">Your profile has been successfully initialized. We're preparing your vault.</p>
+        </header>
 
-        <div class="grid gap-6 md:grid-cols-2">
-            <div class="p-8 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50">
-                <i class="fas fa-folder-plus text-3xl text-slate-400 mb-4"></i>
-                <h3 class="text-xl font-bold mb-2">My Files</h3>
-                <p class="text-slate-500 text-sm">File management features are coming in the next update.</p>
-            </div>
-            <div class="p-8 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50">
-                <i class="fas fa-share-nodes text-3xl text-slate-400 mb-4"></i>
-                <h3 class="text-xl font-bold mb-2">Shared Links</h3>
-                <p class="text-slate-500 text-sm">Secure sharing tools are currently in development.</p>
+        <!-- Countdown Section -->
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 md:p-12 shadow-xl border border-slate-100 dark:border-slate-800 text-center relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl"></div>
+            
+            <div class="relative z-10">
+                <div class="inline-flex items-center px-4 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-widest mb-6">
+                    Launch Countdown
+                </div>
+                <h2 class="text-2xl font-bold mb-8 dark:text-white">Full Access Deployment</h2>
+                
+                <div class="flex justify-center gap-4 md:gap-8">
+                    <div class="flex flex-col">
+                        <span id="hours" class="text-5xl md:text-7xl font-black text-slate-900 dark:text-white">05</span>
+                        <span class="text-xs uppercase font-bold text-slate-400 mt-2">Hours</span>
+                    </div>
+                    <span class="text-5xl md:text-7xl font-light text-slate-300 dark:text-slate-700">:</span>
+                    <div class="flex flex-col">
+                        <span id="minutes" class="text-5xl md:text-7xl font-black text-slate-900 dark:text-white">00</span>
+                        <span class="text-xs uppercase font-bold text-slate-400 mt-2">Minutes</span>
+                    </div>
+                    <span class="text-5xl md:text-7xl font-light text-slate-300 dark:text-slate-700">:</span>
+                    <div class="flex flex-col">
+                        <span id="seconds" class="text-5xl md:text-7xl font-black text-slate-900 dark:text-white">00</span>
+                        <span class="text-xs uppercase font-bold text-slate-400 mt-2">Seconds</span>
+                    </div>
+                </div>
+
+                <div class="mt-12 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                    <p class="text-slate-600 dark:text-slate-400 text-sm italic">
+                        "Secure file hosting is just a few hours away. We are currently finalizing encryption protocols for your region."
+                    </p>
+                </div>
             </div>
         </div>
 
-        <div class="mt-16 pt-8 border-t border-slate-200 dark:border-slate-800">
-            <p class="text-xs uppercase tracking-widest text-slate-400 font-bold">CloudVault Beta v0.1.0</p>
+        <!-- Placeholder Profile Card -->
+        <div class="mt-8 grid md:grid-cols-2 gap-6">
+            <div class="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                    <i class="fas fa-user-shield text-slate-400"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold">Identity Verified</h4>
+                    <p class="text-xs text-slate-500">Tier 1 Beta Access</p>
+                </div>
+            </div>
+            <div class="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                    <i class="fas fa-hdd text-slate-400"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold">50GB Storage</h4>
+                    <p class="text-xs text-slate-500">Reserved for your account</p>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -89,57 +113,72 @@
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Env variables
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'chatlaxy-pro';
-
+        // Firebase Config (Matches index.html)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDncManQICLPVT8WuMVO5kB-Am32VI12wo",
+            authDomain: "chatlaxy-pro.firebaseapp.com",
+            projectId: "chatlaxy-pro",
+            storageBucket: "chatlaxy-pro.firebasestorage.app",
+            messagingSenderId: "807800533954",
+            appId: "1:807800533954:web:67b97dbd432bdbc3cb9c5b"
+        };
+        
+        const appId = 'chatlaxy-pro';
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Security: Redirect to home if not logged in
+        // Theme Restoration
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
+        // Auth Logic
         onAuthStateChanged(auth, async (user) => {
-            if (!user) {
-                window.location.href = 'index.html';
-                return;
-            }
-
-            try {
-                // Fetch profile (Rule 1: Strict paths)
-                const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile');
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    document.getElementById('userNameDisplay').innerText = data.firstName || 'User';
+            if (!user || user.isAnonymous) {
+                // If not logged in, send back to home
+                // window.location.href = "index.html";
+            } else {
+                // Fetch profile data
+                const userDoc = await getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile'));
+                if (userDoc.exists()) {
+                    const data = userDoc.data();
+                    document.getElementById('welcomeMessage').innerHTML = `Welcome to the Beta, <span class="text-blue-600">${data.firstName}</span>!`;
                 }
-            } catch (error) {
-                console.error("Error fetching profile:", error);
-            } finally {
-                // Remove loading overlay
-                const loader = document.getElementById('loadingOverlay');
-                loader.style.opacity = '0';
-                setTimeout(() => loader.remove(), 500);
             }
         });
 
-        // Global functions for buttons
-        window.handleLogout = async () => {
-            await signOut(auth);
-            window.location.href = 'index.html';
+        // Global Logout Function
+        window.logout = () => {
+            signOut(auth).then(() => {
+                window.location.href = "index.html";
+            });
         };
 
-        window.toggleDarkMode = () => {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.theme = isDark ? 'dark' : 'light';
-            document.getElementById('themeIcon').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-        };
+        // Countdown Timer Logic
+        // Set target date to 5 hours from now
+        let targetDate = new Date().getTime() + (5 * 60 * 60 * 1000);
 
-        // Initialize Theme UI
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            document.getElementById('themeIcon').className = 'fas fa-sun';
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = targetDate - now;
+
+            const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById("hours").innerText = h.toString().padStart(2, '0');
+            document.getElementById("minutes").innerText = m.toString().padStart(2, '0');
+            document.getElementById("seconds").innerText = s.toString().padStart(2, '0');
+
+            if (distance < 0) {
+                clearInterval(timerInterval);
+                document.getElementById("welcomeMessage").innerText = "CloudVault is Live!";
+            }
         }
+
+        const timerInterval = setInterval(updateCountdown, 1000);
+        updateCountdown();
     </script>
 </body>
 </html>
