@@ -313,8 +313,6 @@
             getAuth, 
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
-            signInWithCustomToken, 
-            signInAnonymously,
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
@@ -323,7 +321,7 @@
             setDoc 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global environment variables provided at runtime
+        // Environment variables
         const firebaseConfig = JSON.parse(__firebase_config);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'chatlaxy-pro';
 
@@ -331,15 +329,15 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // State listeners
+        // Listen for authentication state changes
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // If user is logged in, redirect to main application page
+                console.log("User detected, redirecting...");
                 window.location.href = 'main.html';
             }
         });
 
-        // Auth Logic Functions
+        // Signup Logic
         const handleSignup = async (e) => {
             e.preventDefault();
             const email = document.getElementById('signupEmail').value;
@@ -355,19 +353,16 @@
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
 
-                // Save user profile to Firestore (Following Rule 1)
-                // Path: /artifacts/{appId}/users/{userId}/profile
+                // Rule 1: Use strict paths for Firestore
                 await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile'), {
                     firstName,
                     lastName,
                     email,
-                    createdAt: new Date().toISOString(),
-                    role: 'user'
+                    createdAt: new Date().toISOString()
                 });
 
                 showToast("Account created! Redirecting...");
-                setTimeout(() => window.location.href = 'main.html', 1000);
-
+                // Note: Redirect is handled by onAuthStateChanged listener
             } catch (error) {
                 console.error("Signup Error:", error);
                 showToast(`Error: ${error.message}`);
@@ -376,6 +371,7 @@
             }
         };
 
+        // Login Logic
         const handleLogin = async (e) => {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
@@ -388,7 +384,6 @@
             try {
                 await signInWithEmailAndPassword(auth, email, password);
                 showToast("Welcome back!");
-                window.location.href = 'main.html';
             } catch (error) {
                 console.error("Login Error:", error);
                 showToast(`Login failed: ${error.message}`);
@@ -397,11 +392,11 @@
             }
         };
 
-        // Attach listeners to forms
+        // Bind events
         document.getElementById('signupForm').addEventListener('submit', handleSignup);
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
 
-        // Helper: Toast
+        // Toast helper exposed to window
         window.showToast = (message) => {
             const toast = document.getElementById('toast');
             toast.innerText = message;
@@ -414,7 +409,7 @@
         // UI & Modal Logic
         const modalOverlay = document.getElementById('modalOverlay');
 
-        // Dark Mode Logic
+        // Dark Mode Initialization
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -422,13 +417,8 @@
         }
 
         function toggleDarkMode() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-            }
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
         }
 
         function openModal(type) {
